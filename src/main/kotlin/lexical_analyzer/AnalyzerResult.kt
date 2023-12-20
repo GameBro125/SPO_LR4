@@ -6,6 +6,15 @@ data class Lexeme(
     val value: String,
     val type: LexemeType
 ): AnalyzerResult {
+
+    fun isIdentifier() = type == LexemeType.IDENTIFIER
+    fun isConstant() = type == LexemeType.CONSTANT
+    fun isIdentifierOrConstant() = isIdentifier() || isConstant()
+
+    fun isOperation() = type == LexemeType.OPERATORS_SIGN
+
+
+
     override fun toString(): String {
         return "$value - ${type.asString}"
     }

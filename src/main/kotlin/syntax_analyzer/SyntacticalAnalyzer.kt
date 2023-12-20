@@ -23,41 +23,26 @@ class SyntacticalAnalyzer {
         while (lexemeList.isNotEmpty()) {
 
             val delimiterIndex = lexemeList.indexOfFirst { it.type == LexemeType.DELIMITER }
-
             if (delimiterIndex == -1)
                 reportError(value = "${lexemeList.first().position}: начатое выражение не заканчивается разделителем <;>")
 
             val lexemeListBeforeDelimiter = lexemeList.subList(0, delimiterIndex)
-            lexemeList =
-                if (lexemeListBeforeDelimiter.none { it.type == LexemeType.CONDITIONAL_OPERATOR }) {
-                    // Если работаем не с условной конструкцией в коде
-                    startNode.addNode(analyzeExpression(lexemeListBeforeDelimiter))
-                    lexemeList.drop(delimiterIndex + 1)
-                } else {
-                    // Ищём законченную условную конструкцию и анализируем всё внутри
-                    val conditionalLexemes = locateConditionalBlock(lexemeList)
-                    startNode.addNode(analyzeConditional(conditionalLexemes))
-                    lexemeList.drop(conditionalLexemes.lastIndex + 1)
-                }
+            startNode.addNode(analyzeAssign(lexemeListBeforeDelimiter))
+            lexemeList = lexemeList.drop(delimiterIndex + 1)
+
         }
         return startNode
     }
 
     private fun locateConditionalBlock(lexemes: List<Lexeme>): List<Lexeme> {
         val lastElse = lexemes.findLast { it.value == "else" }
-        if (lastElse?.position != null) {
-            return lexemes.subList(
+        return if (lastElse?.position != null) {
+            lexemes.subList(
                 fromIndex = 0,
-                toIndex = lexemes.indexOfFirst { lexeme ->
-                    lexeme.type == LexemeType.DELIMITER
-                            &&
-                    lexeme.position !== null
-                            &&
-                    lexeme.position > lastElse.position
-                } + 1
+                toIndex = lexemes.indexOfFirst { lexeme -> lexeme.type == LexemeType.DELIMITER && lexeme.position !== null && lexeme.position > lastElse.position } + 1
             )
         } else {
-            return lexemes.subList(
+            lexemes.subList(
                 fromIndex = 0,
                 toIndex = lexemes.indexOfFirst { lexeme -> lexeme.type == LexemeType.DELIMITER } + 1
             )
@@ -66,29 +51,18 @@ class SyntacticalAnalyzer {
 
     private fun locateParenthesisBlock(lexemes: List<Lexeme>): List<Lexeme> {
         val lastElse = lexemes.findLast { it.value == ")" }
-        if (lastElse?.position != null) {
-            return lexemes.subList(
-                fromIndex = 0,
-                toIndex = lexemes.indexOfFirst { lexeme ->
-                    lexeme.type == LexemeType.DELIMITER
-                            &&
-                            lexeme.position !== null
-                            &&
-                            lexeme.position > lastElse.position
-                } + 1
-            )
-        } else {
-            return lexemes.subList(
-                fromIndex = 0,
-                toIndex = lexemes.indexOfFirst { lexeme -> lexeme.type == LexemeType.DELIMITER } + 1
-            )
-        }
+        val lastIndex =
+            if (lastElse?.position != null)
+                lexemes.indexOfFirst { lexeme -> lexeme.type == LexemeType.DELIMITER && lexeme.position !== null && lexeme.position > lastElse.position } + 1
+            else
+                lexemes.indexOfFirst { lexeme -> lexeme.type == LexemeType.DELIMITER } + 1
+
+        return lexemes.subList(0, lastIndex)
+
     }
 
-    private fun analyzeExpression(lexemes: List<Lexeme>): Node {
-        if (lexemes.size < 3) {
-            reportError(value = "${lexemes.first().position}: незаконченное выражение")
-        }
+    private fun analyzeAssign(lexemes: List<Lexeme>): Node {
+
         if (lexemes.first().type != LexemeType.IDENTIFIER) {
             reportError(value = "${lexemes.first().position}: выражение должно начинаться с идентификатора")
         }
@@ -100,19 +74,33 @@ class SyntacticalAnalyzer {
         if (thirdLexeme.type != LexemeType.IDENTIFIER && thirdLexeme.type != LexemeType.CONSTANT && thirdLexeme.type != LexemeType.PARENTHESIS) {
             reportError(value = "${thirdLexeme.position}: переменной может присваиваться только другая переменная или константа")
         }
-        if (lexemes.size > 3) {
-            reportError(value = "${lexemes.last().position}: превышено максимальное количество лексем в выражении присваивания")
-        }
-        val firstNode = Node(
-            children = mutableListOf(Node(lexeme = lexemes.first()))
-        )
-        val secondNode = Node(
-            lexeme = secondLexeme
-        )
-        val thirdNode = Node(
-            children = mutableListOf(Node(lexeme = thirdLexeme))
-        )
+
+        val firstNode = Node(children = mutableListOf(Node(lexeme = lexemes.first())))
+        val secondNode = Node(lexeme = secondLexeme)
+
+        // либо (E) либо E
+        val thirdNode = Node(children = mutableListOf(Node(lexeme = thirdLexeme)))
         return Node(children = mutableListOf(firstNode, secondNode, thirdNode))
+    }
+
+    // Анализ ... + ...
+    private fun analyzeOperation(lexemes: List<Lexeme>): Node {
+        val operationNode = Node()
+
+        val firstLexeme = lexemes[0]
+        val secondLexeme = lexemes[1]
+        val thirdLexeme = lexemes[2]
+
+        if (!firstLexeme.isIdentifierOrConstant() || !thirdLexeme.isIdentifierOrConstant())
+            reportError(value = "${lexemes.first().position}: операция производится между константой и/или идентификатором")
+
+        if (!secondLexeme.isOperation())
+            reportError(value = "${lexemes.first().position}: неизвестный знак операции")
+
+
+
+
+        return Node()
     }
 
     /* Анализ if ... then ... else ... */
@@ -130,10 +118,10 @@ class SyntacticalAnalyzer {
 
         // add "if condition"
         conditionalNode.addNode(analyzeComparison(lexemes.subList(1, lexemes.indexOfFirst { it.value == "then" })))
-        // add "then"
-        conditionalNode.addNode(Node(lexeme = lexemes.find { it.value == "then" }))
 
+        // Анализ блока then ... else ...
         if (lexemes.any { it.value == "else" }) {
+            // Анализ блока then ... else
             val conditionalBlock = lexemes.subList(
                 fromIndex = lexemes.indexOfFirst { it.value == "then" } + 1,
                 toIndex = lexemes.indexOfLast { it.value == "else" }
@@ -145,8 +133,11 @@ class SyntacticalAnalyzer {
                 fromIndex = lexemes.indexOfLast { it.value == "else" } + 1,
                 toIndex = lexemes.lastIndex + 1
             )
+            // Анализ блока else ...
             analyzeSyntax(outerElseBlock, conditionalNode)
-        } else {
+        }
+        // Анализ блока then ...
+        else {
             val conditionalBlock = lexemes.subList(
                 fromIndex = lexemes.indexOfFirst { it.value == "then" } + 1,
                 toIndex = lexemes.lastIndex + 1
