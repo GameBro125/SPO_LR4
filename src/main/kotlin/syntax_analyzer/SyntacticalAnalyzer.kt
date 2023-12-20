@@ -34,22 +34,10 @@ class SyntacticalAnalyzer {
             when (lexemeListBeforeDelimiter.assumeNodeType()) {
                 ASSIGN -> {
                     startNode.addNode(analyzeAssign(lexemeListBeforeDelimiter))
-                    val dropCount = 2
+                    val dropCount = lexemeListBeforeDelimiter.count()
                     lexemeList = lexemeList.drop(dropCount)
                 }
 
-                OPERATOR -> {
-                    val dropCount = 3
-                    lexemeList = lexemeList.drop(dropCount)
-                }
-
-                PARENTHESIS -> {
-                    val dropCount = 100
-                    lexemeList = lexemeList.drop(dropCount)
-                }
-
-                CONSTANT_OR_NUMBER -> TODO()
-                CONDITIONAL -> TODO()
                 END -> {
                     val dropCount = 1
                     lexemeList = lexemeList.drop(dropCount)
@@ -144,7 +132,7 @@ class SyntacticalAnalyzer {
             else if (middleLexemes.first().isIdentifierOrConstant()) {
                 analyzeOperation(middleLexemes)
             }
-            // ( ...
+            // ( ... )
             else if (middleLexemes.first().isParenthesis() && middleLexemes.last().isParenthesis())
                 if (middleLexemes.isExpressionClosed())
                 // ( )
@@ -152,6 +140,9 @@ class SyntacticalAnalyzer {
                 else
                 // ( ) + ( )
                     analyzeOperation(middleLexemes, middleLexemes.lastIndexOfFirstNode())
+            // (  ) + a
+            else if (!middleLexemes.last().isParenthesis())
+                analyzeOperation(middleLexemes, middleLexemes.lastIndexOfFirstNode())
             else
                 reportError(value = "${firstLexeme.position}: todo")
 

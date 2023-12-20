@@ -46,7 +46,6 @@ fun List<Lexeme>.isExpressionClosed(): Boolean {
 }
 
 fun List<Lexeme>.lastIndexOfFirstNode(): Int {
-    if (!first().isParenthesis() || !last().isParenthesis()) reportError(value = "Что-то не так со скобками")
 
     var flag = 0
     this.forEachIndexed { index, lexeme ->
