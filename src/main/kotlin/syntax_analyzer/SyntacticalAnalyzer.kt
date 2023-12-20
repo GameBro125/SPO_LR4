@@ -4,6 +4,7 @@ import org.example.lexical_analyzer.AnalyzerResult
 import org.example.lexical_analyzer.Error
 import org.example.lexical_analyzer.Lexeme
 import org.example.lexical_analyzer.LexemeType
+import org.example.syntax_analyzer.Node.Type.*
 
 class SyntacticalAnalyzer {
 
@@ -22,14 +23,39 @@ class SyntacticalAnalyzer {
         var lexemeList = sourceLexemes
         while (lexemeList.isNotEmpty()) {
 
-            val delimiterIndex = lexemeList.indexOfFirst { it.type == LexemeType.DELIMITER }
+            var delimiterIndex = lexemeList.indexOfFirst { it.type == LexemeType.DELIMITER }.takeIf { it != -1 }
+
+            if (delimiterIndex == null) delimiterIndex = lexemeList.lastIndex
+
+            val lexemeListBeforeDelimiter = lexemeList.subList(0, delimiterIndex + 1)
             if (delimiterIndex == -1)
                 reportError(value = "${lexemeList.first().position}: начатое выражение не заканчивается разделителем <;>")
 
-            val lexemeListBeforeDelimiter = lexemeList.subList(0, delimiterIndex)
-            startNode.addNode(analyzeAssign(lexemeListBeforeDelimiter))
-            lexemeList = lexemeList.drop(delimiterIndex + 1)
+            when (lexemeListBeforeDelimiter.assumeNodeType()) {
+                ASSIGN -> {
+                    startNode.addNode(analyzeAssign(lexemeListBeforeDelimiter))
+                    val dropCount = 2
+                    lexemeList = lexemeList.drop(dropCount)
+                }
 
+                OPERATOR -> {
+                    val dropCount = 3
+                    lexemeList = lexemeList.drop(dropCount)
+                }
+
+                PARENTHESIS -> {
+                    val dropCount = 100
+                    lexemeList = lexemeList.drop(dropCount)
+                }
+                CONSTANT_OR_NUMBER -> TODO()
+                CONDITIONAL -> TODO()
+                END -> {
+                    val dropCount = 1
+                    lexemeList = lexemeList.drop(dropCount)
+                }
+
+                null -> TODO()
+            }
         }
         return startNode
     }
@@ -63,44 +89,96 @@ class SyntacticalAnalyzer {
 
     private fun analyzeAssign(lexemes: List<Lexeme>): Node {
 
-        if (lexemes.first().type != LexemeType.IDENTIFIER) {
-            reportError(value = "${lexemes.first().position}: выражение должно начинаться с идентификатора")
-        }
+        val firstLexeme = lexemes.first()
         val secondLexeme = lexemes[1]
-        if (secondLexeme.type != LexemeType.ASSIGN_SIGN) {
+        val assignedLexemes = lexemes.subList(2, lexemes.size - 1)
+
+        if (!firstLexeme.isIdentifier())
+            reportError(value = "${firstLexeme.position}: выражение должно начинаться с идентификатора")
+        if (!secondLexeme.isAssign())
             reportError(value = "${secondLexeme.position}: вместо ${secondLexeme.value} ожидалась операция присваивания")
-        }
-        val thirdLexeme = lexemes[2]
-        if (thirdLexeme.type != LexemeType.IDENTIFIER && thirdLexeme.type != LexemeType.CONSTANT && thirdLexeme.type != LexemeType.PARENTHESIS) {
-            reportError(value = "${thirdLexeme.position}: переменной может присваиваться только другая переменная или константа")
-        }
 
-        val firstNode = Node(children = mutableListOf(Node(lexeme = lexemes.first())))
+        val firstNode = Node(children = mutableListOf(Node(lexeme = firstLexeme)))
         val secondNode = Node(lexeme = secondLexeme)
+        val thirdNode =
+            // a
+            if (assignedLexemes.first().isIdentifier() && assignedLexemes.size == 1)
+                Node(children = mutableListOf(Node(lexeme = assignedLexemes.first())))
+            // a + ...
+            else if (assignedLexemes.first().isIdentifier())
+                analyzeOperation(assignedLexemes)
+            // ( ...
+            else if (assignedLexemes.first().isParenthesis())
+                analyzeParenthesis(assignedLexemes)
+            else
+                reportError(value = "Ожидалось выражение в скобках или идентификатор или операция")
 
-        // либо (E) либо E
-        val thirdNode = Node(children = mutableListOf(Node(lexeme = thirdLexeme)))
         return Node(children = mutableListOf(firstNode, secondNode, thirdNode))
+    }
+
+    private fun analyzeParenthesis(lexemes: List<Lexeme>): Node {
+        val firstLexeme = lexemes[0]
+        val lastLexeme = lexemes[lexemes.lastIndex]
+        val middleLexemes = lexemes.subList(1, lexemes.lastIndex)
+
+        if (!firstLexeme.isParenthesis() || !lastLexeme.isParenthesis())
+            reportError(value = "${firstLexeme.position}: ожиадалась скобочка")
+
+
+        val middleNode: Node =
+            // a
+            if (middleLexemes.first().isIdentifier() && middleLexemes.size == 1)
+                Node(children = mutableListOf(Node(lexeme = middleLexemes.first())))
+            // a + ...
+            else if (middleLexemes.first().isIdentifier()) {
+                analyzeOperation(middleLexemes)
+            }
+            // ( ...
+            else if (middleLexemes.first().isParenthesis()) {
+                analyzeParenthesis(middleLexemes)
+            } else {
+                reportError(value = "${lexemes.first().position}: неизвестный знак операции")
+            }
+
+        val firstNode = Node(lexeme = firstLexeme)
+        val lastNode = Node(lexeme = lastLexeme)
+        return Node(children = mutableListOf(firstNode, middleNode, lastNode))
     }
 
     // Анализ ... + ...
     private fun analyzeOperation(lexemes: List<Lexeme>): Node {
-        val operationNode = Node()
 
-        val firstLexeme = lexemes[0]
-        val secondLexeme = lexemes[1]
-        val thirdLexeme = lexemes[2]
+        val firstOperandLexeme = lexemes[0]
+        val rightOperandLexeme = lexemes.subList(2, lexemes.lastIndex + 1)
+        val operatorLexeme = lexemes.findLast { it.isOperation() }
+            ?: reportError(value = "${lexemes.first().position}: неизвестный знак операции")
 
-        if (!firstLexeme.isIdentifierOrConstant() || !thirdLexeme.isIdentifierOrConstant())
+        val leftNode: Node
+        val operatorNode: Node
+        val rightNode: Node
+        // a + ...
+        if (firstOperandLexeme.isIdentifier() && operatorLexeme.isOperation()) {
+            leftNode = Node(children = mutableListOf(Node(firstOperandLexeme)))
+            operatorNode = Node(lexeme = operatorLexeme)
+            rightNode =
+                if (rightOperandLexeme.size > 1)
+                    analyzeOperation(lexemes.subList(2, lexemes.size))
+                else if (rightOperandLexeme.size == 1)
+                    Node(children = mutableListOf(Node(rightOperandLexeme.first())))
+                else
+                    throw Throwable("СУКА СУКА СУКА")
+
+        }
+        // (...) + ...
+        else if (firstOperandLexeme.isParenthesis()) {
+            throw Throwable("СУКА СУКА СУКА")
+        } else
+            throw Throwable("СУКА СУКА СУКА")
+
+        if (!firstOperandLexeme.isIdentifierOrConstant())
             reportError(value = "${lexemes.first().position}: операция производится между константой и/или идентификатором")
 
-        if (!secondLexeme.isOperation())
-            reportError(value = "${lexemes.first().position}: неизвестный знак операции")
-
-
-
-
-        return Node()
+        return Node(children = mutableListOf(leftNode, operatorNode, rightNode))
     }
 
     /* Анализ if ... then ... else ... */
@@ -177,7 +255,7 @@ class SyntacticalAnalyzer {
     private fun reportError(
         prefix: String = "Ошибка на позиции ",
         value: String
-    ) {
+    ): Nothing {
         throw UnsupportedOperationException(prefix + value)
     }
 }

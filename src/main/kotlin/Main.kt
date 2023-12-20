@@ -60,8 +60,7 @@ fun main() = application {
 @Composable
 fun testAnalyzer() {
     val sourceCode = """
-        a := a;
-        b := b;
+        a := (a1 + a2 + a3);
     """.trimIndent()
     val lexicalResults = analyzeLexemes(sourceCode)
     analyzeSyntax(lexicalResults)

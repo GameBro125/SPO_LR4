@@ -17,21 +17,25 @@ data class Node(
         PARENTHESIS,
         OPERATOR,
         CONSTANT_OR_NUMBER,
-        CONDITIONAL
+        CONDITIONAL,
+        END,
     }
 }
 
-fun List<Lexeme>.assumeNodeType(): Node.Type? {
-    return if (first().value == "(")
-        Node.Type.PARENTHESIS
-    else if (size > 1 && first().type == LexemeType.IDENTIFIER && get(1).type == LexemeType.ASSIGN_SIGN)
+fun List<Lexeme>.assumeNodeType(): Node.Type? =
+    if (isEmpty())
+        null
+    else if (size == 1 && first().isDelimiter())
+        Node.Type.END
+    else if (size > 1 && get(0).isIdentifier() && get(1).isAssign())
         Node.Type.ASSIGN
-    else if (first().type == LexemeType.CONDITIONAL_OPERATOR)
-        Node.Type.CONDITIONAL
-    else if (any { it.value == "+" || it.value == "-" || it.value == "*" || it.value == "/" })
+    else if ((first().value == "(" && last().value == ")") || get(lastIndex - 1).value == ")")
+        Node.Type.PARENTHESIS
+    else if (!first().isParenthesis() && !last().isParenthesis())
         Node.Type.OPERATOR
     else if (size == 1 && first().type == LexemeType.CONSTANT || first().type == LexemeType.IDENTIFIER)
         Node.Type.CONSTANT_OR_NUMBER
+//    else if (first().type == LexemeType.CONDITIONAL_OPERATOR)
+//        Node.Type.CONDITIONAL
     else
         null
-}

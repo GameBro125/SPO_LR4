@@ -13,6 +13,12 @@ data class Lexeme(
 
     fun isOperation() = type == LexemeType.OPERATORS_SIGN
 
+    fun isAssign() = type == LexemeType.ASSIGN_SIGN
+
+    fun isParenthesis() = type == LexemeType.PARENTHESIS
+
+    fun isDelimiter() = type == LexemeType.DELIMITER
+
 
 
     override fun toString(): String {
