@@ -1,0 +1,11 @@
+﻿  LR4.cpp
+C:\Users\Wladislaw\Desktop\SPO_LR4\src\main\cpp\LR4\lecsic.h(140,59): warning C4267: =: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\Wladislaw\Desktop\SPO_LR4\src\main\cpp\LR4\lecsic.h(148,52): warning C4267: =: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\Wladislaw\Desktop\SPO_LR4\src\main\cpp\LR4\lecsic.h(167,59): warning C4267: =: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\Wladislaw\Desktop\SPO_LR4\src\main\cpp\LR4\lecsic.h(175,56): warning C4267: =: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\Wladislaw\Desktop\SPO_LR4\src\main\cpp\LR4\lecsic.h(263,16): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\Wladislaw\Desktop\SPO_LR4\src\main\cpp\LR4\lecsic.h(278,38): warning C4267: +=: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\Wladislaw\Desktop\SPO_LR4\src\main\cpp\LR4\lr-4.h(55,14): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\Wladislaw\Desktop\SPO_LR4\src\main\cpp\LR4\lr-4.h(243,10): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\Wladislaw\Desktop\SPO_LR4\src\main\cpp\LR4\LR4.cpp(46,22): warning C4267: +=: преобразование из "size_t" в "int"; возможна потеря данных
+  LR4.vcxproj -> C:\Users\Wladislaw\Desktop\SPO_LR4\src\main\cpp\x64\Debug\LR4.exe
