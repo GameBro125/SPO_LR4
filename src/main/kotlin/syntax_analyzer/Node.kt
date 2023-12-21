@@ -25,16 +25,16 @@ data class Node(
 }
 
 fun List<Lexeme>.isExpressionClosed(): Boolean {
-    // ( () + () )
-    // 1 21   21 0
+    // ( ( ( E ) ) + ( E ) )
+    // 1 2 3   2 1   2   1 0
 
-    // ( () ) + ()
-    // 1 21 0   10
+    // ( ( E ) ) + ( E )
+    // 1 2   1 0   1   0
 
     if (!first().isParenthesis() || !last().isParenthesis()) return false
 
     var flag = 0
-    this.forEachIndexed { index, lexeme ->
+    forEachIndexed { index, lexeme ->
         if (lexeme.value == "(") flag++
         if (lexeme.value == ")") flag--
 
@@ -46,6 +46,12 @@ fun List<Lexeme>.isExpressionClosed(): Boolean {
 }
 
 fun List<Lexeme>.lastIndexOfFirstNode(): Int {
+    // ( ( E ) ) + E
+    // 1 2   1 0
+    //
+    //         ^
+    //         |
+    // last index of first node in operation
 
     var flag = 0
     this.forEachIndexed { index, lexeme ->
