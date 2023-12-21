@@ -68,10 +68,10 @@ class SyntacticalAnalyzer {
         val secondNode = Node(lexeme = secondLexeme)
         val thirdNode =
             // a
-            if (assignedLexemes.first().isIdentifier() && assignedLexemes.size == 1)
+            if (assignedLexemes.first().isIdentifierOrConstant() && assignedLexemes.size == 1)
                 Node(children = mutableListOf(Node(lexeme = assignedLexemes.first())))
             // a + ...
-            else if (assignedLexemes.first().isIdentifier()) {
+            else if (assignedLexemes.first().isIdentifierOrConstant()) {
                 analyzeOperation(assignedLexemes)
             }
             // ( ...
